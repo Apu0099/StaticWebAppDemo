@@ -1,0 +1,50 @@
+trigger:
+  none
+
+pool:
+  vmImage: ubuntu-latest
+
+steps:
+# Install Node.js version 18.x
+- task: NodeTool@0
+  displayName: 'Use Node 18.x'
+  inputs:
+    versionSpec: 18.x
+
+# Install Angular CLI globally
+- script: |
+    npm install -g @angular/cli
+    ng version
+  displayName: 'Install Angular CLI'
+
+# Install dependencies using npm ci (more reliable in CI/CD pipelines)
+- task: Npm@1
+  displayName: 'Install Dependencies'
+  inputs:
+    workingDir: '$(System.DefaultWorkingDirectory)'
+    command: 'ci'  # Use npm ci instead of npm install
+    verbose: false
+
+# Ensure the correct permissions for node_modules/.bin
+- script: |
+    chmod -R 755 ./node_modules/.bin  
+  displayName: 'Set Permissions for node_modules/.bin'
+
+# Build the Angular application
+- task: Npm@1
+  displayName: 'Build Application'
+  inputs:
+    command: custom
+    workingDir: '$(System.DefaultWorkingDirectory)'
+    verbose: false
+    customCommand: 'run build'
+
+# Deploy to Azure Static Web App
+- task: AzureStaticWebApp@0
+  displayName: 'Deploy to Azure Static Web App'
+  inputs:
+    app_location: "/"
+    api_location: ""
+    output_location: "dist/copilot-app" 
+  env:
+    azure_static_web_apps_api_token: $(secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_BLACK_MOSS_02A19)
